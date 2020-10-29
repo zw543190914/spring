@@ -35,6 +35,10 @@ public class BeanWrapper extends FactoryBean {
     }
 
 
-    public BeanWrapper() {
+
+    public Object getOriginalInstance() {
+        return originalInstance;
     }
+
+
 }

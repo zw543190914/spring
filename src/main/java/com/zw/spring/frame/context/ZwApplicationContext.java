@@ -13,6 +13,7 @@ import com.zw.spring.frame.core.BeanFactory;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ZwApplicationContext implements BeanFactory {
@@ -57,6 +58,12 @@ public class ZwApplicationContext implements BeanFactory {
                 Object bean = getBean(beanName);
             }
         }
+        System.out.println("doAutowired.beanWrapperMap == " + JSON.toJSONString(beanWrapperMap));
+
+        for (Map.Entry<String,BeanWrapper> beanWrapperEntry : this.beanWrapperMap.entrySet()){
+            populateBean(beanWrapperEntry.getKey(),beanWrapperEntry.getValue().getWrapperInstance());
+        }
+
     }
 
     /**
@@ -90,7 +97,7 @@ public class ZwApplicationContext implements BeanFactory {
 
             }
 
-            System.out.println("beanDefinitionMap == " + JSON.toJSONString(beanDefinitionMap));
+            System.out.println("doRegister.beanDefinitionMap == " + JSON.toJSONString(beanDefinitionMap));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -124,7 +131,6 @@ public class ZwApplicationContext implements BeanFactory {
         // 实例初始化之后
         beanPostProcessor.postProcessAfterInitialization(instance,beanName);
 
-        populateBean(beanName,instance);
 
         // 给自己留有可操作空间
         return this.beanWrapperMap.get(beanClassName).getWrapperInstance();
@@ -148,12 +154,17 @@ public class ZwApplicationContext implements BeanFactory {
             if ("".equals(autowiredBeanName)){
                 // 按照类型装配
                 autowiredBeanName = field.getType().getName();
+                // 接口-去beanDefinitionMap找实现类
+                if (field.getType().isInterface()){
+                    BeanDefinition beanDefinition = beanDefinitionMap.get(autowiredBeanName);
+                    autowiredBeanName = beanDefinition.getBeanClassName();
+                }
             }
             field.setAccessible(true);
             try {
-                System.out.println("==== " + instance + " , " + autowiredBeanName + " , " + this.beanWrapperMap.get(autowiredBeanName));
+                System.out.println("populateBean.==== " + instance + " , " + autowiredBeanName + " , " + this.beanWrapperMap.get(autowiredBeanName));
 
-                field.set(instance,this.beanWrapperMap.get(autowiredBeanName).getWrapperClass());
+                field.set(instance,this.beanWrapperMap.get(autowiredBeanName).getWrapperInstance());
             } catch (IllegalAccessException e) {
                 e.printStackTrace();
             }
@@ -178,6 +189,19 @@ public class ZwApplicationContext implements BeanFactory {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public String[] getBeanDefinitionNames(){
+        return beanDefinitionMap.keySet().toArray(new String[this.beanDefinitionMap.size()]);
+    }
+
+
+    public int getBeanDefinitionCount(){
+        return beanDefinitionMap.size();
+    }
+
+    public Properties getConfig(){
+        return this.reader.getConfig();
     }
 
     public ZwApplicationContext() {
