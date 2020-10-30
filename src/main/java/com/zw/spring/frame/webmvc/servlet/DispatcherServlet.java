@@ -158,7 +158,7 @@ public class DispatcherServlet extends HttpServlet {
                     continue;
                 }
                 ZRequestMapping requestMapping = method.getAnnotation(ZRequestMapping.class);
-                String regex = ("/" + baseUrl + requestMapping.value().replaceAll("/+", "/"));
+                String regex = ("/" + baseUrl + requestMapping.value().replaceAll("\\*",".*")).replaceAll("/+", "/");
                 Pattern pattern = Pattern.compile(regex);
                 this.handlerMappings.add(new ZHandlerMapping(controller, method, pattern));
                 System.out.println("Mapping:" + regex + "," + method);
@@ -206,17 +206,39 @@ public class DispatcherServlet extends HttpServlet {
 
         ZModelAndView mv = ha.handler(request, response, handler);
 
-        processDispatcherResult(request, mv);
+
+        processDispatcherResult(request,response, mv);
 
 
     }
 
-    private void processDispatcherResult(HttpServletRequest request, ZModelAndView mv) {
+    private void processDispatcherResult(HttpServletRequest request,
+                                         HttpServletResponse response,
+                                         ZModelAndView mv) throws Exception{
         // 调用 viewResolver的resolveView()
+        if (null == mv){
+            return;
+        }
+        if (this.viewResolvers.isEmpty()){
+            return;
+        }
+        for (ZViewResolver viewResolver : this.viewResolvers) {
+            if (!mv.getViewName().equals(viewResolver.getViewName())){
+                continue;
+            }
+            String out = viewResolver.viewResolver(mv);
+            if (null != out){
+                response.getWriter().write(out);
+                break;
+            }
+        }
     }
 
     private ZHandlerAdapter getHandlerAdapter(ZHandlerMapping handler) {
-        return null;
+        if (this.handlerAdapters.isEmpty()){
+            return null;
+        }
+        return handlerAdapters.get(handler);
     }
 
     /**

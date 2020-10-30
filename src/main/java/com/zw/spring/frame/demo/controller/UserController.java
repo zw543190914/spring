@@ -12,7 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @ZController
-@ZRequestMapping("/user")
+@ZRequestMapping("user")
 public class UserController {
 
     @ZAutowired
@@ -25,6 +25,17 @@ public class UserController {
         String result = userService.query(name);
         System.out.println(result);
         return out(response,result);
+    }
+
+    @ZRequestMapping("/add*.json")
+    //http://localhost:8080/spring/user/addUser.json?name=zw&name=ss&addr=henan
+    public ZModelAndView add(HttpServletRequest request,
+                               HttpServletResponse response,
+                               @ZRequestParam("name") String name,
+                             @ZRequestParam("addr") String addr) {
+        String result = userService.add(name,addr);
+        System.out.println(result);
+        return out(response, result);
     }
 
     private ZModelAndView out( HttpServletResponse response,String param){

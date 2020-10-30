@@ -21,12 +21,11 @@ public class IndexController {
     private IUserService userService;
 
     @ZRequestMapping("/index.html")
-    public ZModelAndView index(HttpServletRequest request,
-                               HttpServletResponse response,
-                               @ZRequestParam("name") String name){
+    public ZModelAndView index(@ZRequestParam("name") String name){
         String result = userService.query(name);
         System.out.println(result);
         Map<String,Object> model = new HashMap<String, Object>();
+        model.put("user","ZW");
         return new ZModelAndView("index.html",model);
     }
 
