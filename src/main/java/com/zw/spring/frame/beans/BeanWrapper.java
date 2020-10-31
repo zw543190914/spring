@@ -1,8 +1,12 @@
 package com.zw.spring.frame.beans;
 
+import com.zw.spring.frame.aop.ZwAopConfig;
+import com.zw.spring.frame.aop.ZwAopProxy;
 import com.zw.spring.frame.core.FactoryBean;
 
 public class BeanWrapper extends FactoryBean {
+
+    private ZwAopProxy aopProxy = new ZwAopProxy();
 
     // 使用到观察者模式，支持 事件响应 监听
     private BeanPostProcessor beanPostProcessor;
@@ -12,7 +16,8 @@ public class BeanWrapper extends FactoryBean {
     private Object originalInstance;
 
     public BeanWrapper(Object instance) {
-        this.wrapperInstance = instance;
+        // 加入动态代理
+        this.wrapperInstance = aopProxy.getProxy(instance);
         this.originalInstance = instance;
     }
 
@@ -35,6 +40,9 @@ public class BeanWrapper extends FactoryBean {
     }
 
 
+    public void setAopConfig(ZwAopConfig config){
+        aopProxy.setAopConfig(config);
+    }
 
     public Object getOriginalInstance() {
         return originalInstance;

@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.zw.spring.frame.annotation.ZAutowired;
 import com.zw.spring.frame.annotation.ZController;
 import com.zw.spring.frame.annotation.ZService;
+import com.zw.spring.frame.aop.ZwAopConfig;
 import com.zw.spring.frame.beans.BeanDefinition;
 import com.zw.spring.frame.beans.BeanPostProcessor;
 import com.zw.spring.frame.beans.BeanWrapper;
@@ -11,19 +12,21 @@ import com.zw.spring.frame.context.support.BeanDefinitionReader;
 import com.zw.spring.frame.core.BeanFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-public class ZwApplicationContext implements BeanFactory {
+public class ZwApplicationContext extends ZwDefaultListableBeanFactory implements BeanFactory {
 
     private String[] configLocation;
 
     private BeanDefinitionReader reader;
 
-    // 保存配置信息
-    private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
+
 
     // 保证 注册式单例
     private Map<String, Object> beanCachMap = new ConcurrentHashMap<String, Object>();
@@ -56,12 +59,13 @@ public class ZwApplicationContext implements BeanFactory {
             String beanName = beanDefinitionEntry.getKey();
             if (!beanDefinitionEntry.getValue().isLazyInit()){
                 Object bean = getBean(beanName);
+                System.out.println("=====" + bean.getClass());
             }
         }
         System.out.println("doAutowired.beanWrapperMap == " + JSON.toJSONString(beanWrapperMap));
 
         for (Map.Entry<String,BeanWrapper> beanWrapperEntry : this.beanWrapperMap.entrySet()){
-            populateBean(beanWrapperEntry.getKey(),beanWrapperEntry.getValue().getWrapperInstance());
+            populateBean(beanWrapperEntry.getKey(),beanWrapperEntry.getValue().getOriginalInstance());
         }
 
     }
@@ -126,13 +130,18 @@ public class ZwApplicationContext implements BeanFactory {
             return null;
         }
         BeanWrapper beanWrapper = new BeanWrapper(instance);
+        try {
+            beanWrapper.setAopConfig(instantionAopConfig(beanDefinition));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         this.beanWrapperMap.put(beanClassName,beanWrapper);
 
         // 实例初始化之后
         beanPostProcessor.postProcessAfterInitialization(instance,beanName);
 
 
-        // 给自己留有可操作空间
+        // 给自己留有可操作空间---返回代理对象
         return this.beanWrapperMap.get(beanClassName).getWrapperInstance();
     }
 
@@ -191,6 +200,32 @@ public class ZwApplicationContext implements BeanFactory {
         return null;
     }
 
+    private ZwAopConfig instantionAopConfig(BeanDefinition beanDefinition)throws Exception{
+        ZwAopConfig config = new ZwAopConfig();
+        String expression = reader.getConfig().getProperty("pointCut");
+        // 方便分割，以空格分开
+        String[] before = reader.getConfig().getProperty("aspectBefore").split("\\s");
+        String[] after = reader.getConfig().getProperty("aspectAfter").split("\\s");
+
+        String className = beanDefinition.getBeanClassName();
+        Class<?> clazz = Class.forName(className);
+
+        Pattern pattern = Pattern.compile(expression);
+        Class<?> aspectClass = Class.forName(before[0]);
+        // 遍历 所有方法，匹配pointCut
+        for (Method m : clazz.getDeclaredMethods()) {
+            // public .* com.zw.spring.frame.demo.service..*ServiceImpl..*(.*)
+            // public java.lang.String com.zw.spring.frame.demo.service.impl.UserServiceImpl.add(java.lang.String,java.lang.String)
+            Matcher matcher = pattern.matcher(m.toString());
+            if (matcher.matches()){
+                // 满足切面规则的类添加到切面
+                //需要增强的方法-切入的方法点 ---增强类的实例 --前置和后置的增强方法
+                config.put(m,aspectClass.newInstance(),new Method[]{aspectClass.getMethod(before[1]),aspectClass.getMethod(after[1])});
+            }
+        }
+        return config;
+    }
+
     public String[] getBeanDefinitionNames(){
         return beanDefinitionMap.keySet().toArray(new String[this.beanDefinitionMap.size()]);
     }
@@ -204,6 +239,5 @@ public class ZwApplicationContext implements BeanFactory {
         return this.reader.getConfig();
     }
 
-    public ZwApplicationContext() {
-    }
+
 }

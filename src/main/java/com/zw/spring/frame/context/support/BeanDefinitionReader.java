@@ -88,6 +88,4 @@ public class BeanDefinitionReader  {
         return String.valueOf(chars);
     }
 
-    public BeanDefinitionReader() {
-    }
 }

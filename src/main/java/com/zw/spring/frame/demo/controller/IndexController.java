@@ -21,6 +21,7 @@ public class IndexController {
     private IUserService userService;
 
     @ZRequestMapping("/index.html")
+    //http://localhost:8080/spring/index.html?name=zw&name=ss&addr=henan
     public ZModelAndView index(@ZRequestParam("name") String name){
         String result = userService.query(name);
         System.out.println(result);

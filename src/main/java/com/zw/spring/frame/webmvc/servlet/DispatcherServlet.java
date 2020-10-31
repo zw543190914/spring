@@ -3,6 +3,7 @@ package com.zw.spring.frame.webmvc.servlet;
 import com.zw.spring.frame.annotation.ZController;
 import com.zw.spring.frame.annotation.ZRequestMapping;
 import com.zw.spring.frame.annotation.ZRequestParam;
+import com.zw.spring.frame.aop.ZwAopProxyUtils;
 import com.zw.spring.frame.context.ZwApplicationContext;
 import com.zw.spring.frame.webmvc.ZHandlerAdapter;
 import com.zw.spring.frame.webmvc.ZHandlerMapping;
@@ -41,7 +42,6 @@ public class DispatcherServlet extends HttpServlet {
         // 相当于把 ioc init
         ZwApplicationContext applicationContext = new ZwApplicationContext(config.getInitParameter(LOCATION));
 
-        //
         initStrategies(applicationContext);
     }
 
@@ -139,7 +139,14 @@ public class DispatcherServlet extends HttpServlet {
         // 取出所有实例
         String[] beanNames = context.getBeanDefinitionNames();
         for (String beanName : beanNames) {
-            Object controller = context.getBean(beanName);
+            Object proxy = context.getBean(beanName);
+            Object controller = null;
+            try {
+                controller = ZwAopProxyUtils.getTargetObject(proxy);
+            } catch (Exception e) {
+                e.printStackTrace();
+                continue;
+            }
             Class<?> clazz = controller.getClass();
             // 不是所有的都需要
             if (!clazz.isAnnotationPresent(ZController.class)) {
@@ -175,13 +182,7 @@ public class DispatcherServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        String url = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        url = url.replace(contextPath, "").replaceAll("/+", "/");
 
-
-        // 对象，方法名
-        //method.invoke()
         try {
             doDispatch(request, response);
         } catch (Exception e) {

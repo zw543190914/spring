@@ -37,7 +37,6 @@ public class UserController {
         System.out.println(result);
         return out(response, result);
     }
-
     private ZModelAndView out( HttpServletResponse response,String param){
         try {
             response.getWriter().write(param);
